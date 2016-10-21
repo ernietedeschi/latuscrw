@@ -4,12 +4,12 @@
 
 **** USER OPTIONS
 
-global acsfile "usa_00012.dta"		// Name of the ACS extract file to use
-global asecfile "cps_00042.dta"		// Name of the CPS ASEC extract file to use
-global weight "w1011_main"			// Latest LAT/USC official weight (from polldata.dta)
-									// NOTE: This variable names changes with every polldata.dta update!
+global acsfile 	"usa_00012.dta"		// Name of the ACS extract file to use
+global asecfile "cps_00044.dta"		// Name of the CPS ASEC extract file to use
+global weight 	"w1011_main"		// Latest LAT/USC official weight (from polldata.dta)
+					// NOTE: This variable names changes with every polldata.dta update!
 
-local lastday td(11oct2016)			// Final day of analysis (Should be day before the date the LAT/USC file was updated)		
+local lastday td(11oct2016)					// Final day of analysis (Should be day before the date the LAT/USC file was updated)		
 local wd "/Users/ernietedeschi/Documents/data/polling/final/"	// Working directory. Put all files here.
 
 **** END USER OPTIONS
@@ -17,7 +17,7 @@ local wd "/Users/ernietedeschi/Documents/data/polling/final/"	// Working directo
 cd `wd'
 
 do makeacs.do		// Creates ACS weights
-do makeasec.do		// Creates ASEC weights
+do makeasec3.do		// Creates ASEC weights
 do getuasid.do		// Gets the official LAT/USC
 
 use fulldata, clear
@@ -44,12 +44,16 @@ corrdata inc_cat
 corrdata racethn
 corrdata edu2
 corrdata statereside
+corrdata maritalstatus
 
-** Drop incomplete responses and <18
-reg statereside age_cat gender inc_cat racethn edu2
+
+** Drop incomplete responses and <18 and oversamples
+reg statereside age_cat gender inc_cat racethn edu2 maritalstatus
 gen full = e(sample)
 keep if full == 1
 keep if age >= 18
+keep if sampletype == 1
+
 
 ** Create gender/race interaction
 sort gender racethn
@@ -81,6 +85,8 @@ getdata age_cat
 getdata racethn
 getdata edu2
 getdata statereside
+getdata maritalstatus
+
 
 gen acswt = 10000
 
@@ -95,9 +101,11 @@ end
 forvalues i = 1/100 {
 	rewt gendrace
 	rewt statereside
-    rewt age_cat
-    rewt edu2
+    	rewt age_cat
+    	rewt edu2
 	rewt inc_cat
+	rewt maritalstatus
+
 }
 
 
@@ -105,7 +113,7 @@ by ewave: egen twt = total(acswt)
 replace acswt = 250293000*acswt/twt
 
 ** Generate ASEC-based weights (asecwt)
-drop gendracep inc_catp age_catp racethnp edu2p stateresidep twt
+drop gendracep inc_catp age_catp racethnp edu2p stateresidep maritalstatusp twt
 
 capture program drop getdata
 program define getdata
@@ -118,6 +126,7 @@ getdata age_cat
 getdata racethn
 getdata edu2
 getdata statereside
+getdata maritalstatus
 
 gen asecwt = 10000
 
@@ -132,9 +141,10 @@ end
 forvalues i = 1/100 {
 	rewt gendrace
 	rewt statereside
-    rewt age_cat
-    rewt edu2
+    	rewt age_cat
+    	rewt edu2
 	rewt inc_cat
+	rewt maritalstatus
 }
 
 
